@@ -25,7 +25,7 @@
     (with-current-buffer standard-output
       (unless (eq (apply 'call-process (car command) nil '(t ".clang-completion-error") nil (cdr command)) 0)
         (let ((last-command compile-command))
-          (compile "cat .clang-completion-error")
+          ;(compile "cat .clang-completion-error")
           (setq compile-command last-command))))))
 
 (defun clang-parse-completion-line (line)
@@ -43,10 +43,9 @@
   (let* ((filename (buffer-file-name buffer))
          (col      (1+ (- point (point-at-bol))))
          (row      (count-lines point (point-min)))
-         (cmd      (list clang-executable "-cc1"
-                         filename "-fsyntax-only" "-code-completion-at"
-                         (format "%s:%s:%s" filename row col))))
-
+         (cmd      (list "/usr/bin/make" "check-completions"
+                         (format "COMPLETE_POINT=%s:%s:%s" filename row col)
+                         (format "COMPLETE_SOURCES=%s" filename))))
     ;; eval the config file under buffer locations
     (let* ((filedir  (file-name-directory filename))
            (config-filename (concat filedir ".clang-completion-config.el")))
