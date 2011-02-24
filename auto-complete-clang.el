@@ -2,6 +2,7 @@
 
 (defvar clang-executable "clang")
 (defvar clang-completion-doc-table (make-hash-table :test 'equal))
+(defvar clang-make-executable (executable-find "make"))
 
 ;; faces
 (defface clang-completion-plain-face
@@ -37,15 +38,22 @@
         (t nil))
   )
 
+(defun clang-choose-command (filename row col)
+  (if (file-exists-p "Makefile")
+      (list clang-make-executable "check-completions"
+            (format "COMPLETE_POINT=%s:%s:%s" filename row col)
+            (format "COMPLETE_SOURCES=%s" filename))
+    (list clang-executable "-cc1"
+          filename "-fsyntax-only" "-code-completion-at"
+          (format "%s:%s:%s" filename row col))))
+
 (defun clang-process (buffer point)
   (unless (buffer-file-name buffer)
     (return ""))
   (let* ((filename (buffer-file-name buffer))
          (col      (1+ (- point (point-at-bol))))
          (row      (count-lines point (point-min)))
-         (cmd      (list "/usr/bin/make" "check-completions"
-                         (format "COMPLETE_POINT=%s:%s:%s" filename row col)
-                         (format "COMPLETE_SOURCES=%s" filename))))
+         (cmd      (clang-choose-command filename row col)))
     ;; eval the config file under buffer locations
     (let* ((filedir  (file-name-directory filename))
            (config-filename (concat filedir ".clang-completion-config.el")))
@@ -58,7 +66,6 @@
       (setq cmd (append cmd clang-completion-flags)))
     (when (stringp clang-completion-pch)
       (setq cmd (append cmd (list "-include-pch" clang-completion-pch))))
-    (message (format "complete at %s:%s:%s" filename row col))
     (clang-process-exec cmd)))
 
 (defun clang-get-process-result (string)
